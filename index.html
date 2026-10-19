@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f47721">
+  <title>TOMORO COFFEE · Expiry Monitor</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="toast" class="toast hidden"></div>
+  <section id="loginView" class="login-wrap">
+    <form id="loginForm" class="panel login-card">
+      <div class="wordmark" aria-label="TOMORO COFFEE">TOMORO<br><span>COFFEE</span></div>
+      <p class="eyebrow">STORE OPERATIONS</p>
+      <h1>Expiry Monitor</h1>
+      <p class="muted">Login menggunakan kode akun dan password.</p>
+      <label>Kode akun / kode toko<input id="loginCode" autocomplete="username" required placeholder="Contoh: JKT001"></label>
+      <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Masukkan password"></label>
+      <button class="primary full" type="submit">Login</button>
+      <p class="tiny muted">Akun dibuat oleh Super Admin atau Area Manager yang berwenang.</p>
+    </form>
+  </section>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand"><div class="wordmark compact">TOMORO<br><span>COFFEE</span></div><div class="brand-divider"></div><div><b>Expiry Monitor</b><small id="roleLabel">Dashboard</small></div></div>
+      <nav id="nav">
+        <button class="nav-item active" data-page="dashboard">▦ <span>Dashboard</span></button>
+        <button class="nav-item" data-page="monitor">◷ <span>Holding Time</span></button>
+        <button class="nav-item" data-page="register">＋ <span>Register Product</span></button>
+        <button class="nav-item" data-page="history">▤ <span>History & Rekap</span></button>
+        <button class="nav-item admin-only hidden" data-page="stores">▣ <span>Data Toko</span></button>
+        <button class="nav-item admin-only hidden" data-page="accounts">♙ <span>Manajemen Akun</span></button>
+      </nav>
+      <div class="sidebar-bottom"><div id="identity" class="identity"></div><button id="logoutBtn" class="nav-item">↪ <span>Keluar</span></button></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div><p class="eyebrow">TOMORO COFFEE · STORE OPERATIONS</p><h1 id="pageTitle">Dashboard</h1><p class="muted" id="pageSubtitle">Ringkasan kondisi holding time.</p></div><div class="top-actions"><span class="live-dot"></span><span>Realtime</span><button id="soundToggle" class="secondary">Aktifkan audio</button></div></header>
+      <section id="storePicker" class="panel store-picker hidden"><label for="storeSelect">Toko yang dipantau</label><select id="storeSelect"></select><span class="muted tiny">Alarm detail hanya aktif untuk toko yang dipilih.</span></section>
+
+      <section id="page-dashboard" class="page">
+        <div class="stats-grid">
+          <article class="stat panel"><span class="stat-icon blue">▣</span><div><p>Toko</p><strong id="statStores">—</strong><small>Dalam area / sistem</small></div></article>
+          <article class="stat panel"><span class="stat-icon green">□</span><div><p>Produk aktif</p><strong id="statActive">0</strong><small>Countdown berjalan</small></div></article>
+          <article class="stat panel"><span class="stat-icon amber">!</span><div><p>Akan expired</p><strong id="statWarning">0</strong><small>Dalam batas warning</small></div></article>
+          <article class="stat panel"><span class="stat-icon red">◴</span><div><p>Sudah expired</p><strong id="statExpired">0</strong><small>Perlu ditangani</small></div></article>
+          <article class="stat panel"><span class="stat-icon purple">▤</span><div><p>Waste bulan ini</p><strong id="statWaste">0</strong><small id="statWasteUnit">unit</small></div></article>
+        </div>
+        <div class="content-grid">
+          <article class="panel section-card"><div class="section-head"><div><h2 id="dashboardListTitle">Holding Time Aktif</h2><p class="muted">Produk yang sedang dihitung.</p></div><button class="secondary" data-goto="monitor">Lihat semua</button></div><div id="dashboardProducts" class="product-list empty-state">Belum ada produk aktif.</div></article>
+          <article class="panel section-card"><div class="section-head"><div><h2>Ringkasan Used / Waste</h2><p class="muted">Periode bulan berjalan.</p></div></div><div class="summary-row"><span>Used</span><strong id="summaryUsed">0</strong></div><div class="bar"><span id="usedBar"></span></div><div class="summary-row"><span>Waste</span><strong id="summaryWaste">0</strong></div><div class="bar waste"><span id="wasteBar"></span></div><p class="tiny muted">Pergantian periode otomatis tanggal 1. Histori lama tetap tersimpan.</p></article>
+        </div>
+      </section>
+
+      <section id="page-monitor" class="page hidden">
+        <div class="panel section-card"><div class="section-head"><div><h2>Produk dalam Holding Time</h2><p class="muted">Pilih produk terdaftar untuk memulai countdown.</p></div><button class="primary" data-goto="add">＋ Add Product / Mulai Countdown</button></div><div id="monitorProducts" class="product-grid"></div></div>
+        <div id="addPanel" class="panel section-card hidden"><div class="section-head"><div><h2>Add Product / Mulai Countdown</h2><button class="secondary" data-close-add>Tutup</button></div></div><form id="addForm" class="form-grid">
+          <label>Kategori<select id="addCategory" required></select></label>
+          <label>Produk terdaftar<select id="addMasterProduct" required></select></label>
+          <label>Jumlah<input id="addQty" type="number" min="0.001" step="any" value="1" required></label>
+          <label>Satuan<select id="addUnit"><option>pcs</option><option>pack</option><option>gram</option><option>kg</option><option>ml</option><option>liter</option><option>botol</option></select></label>
+          <label>Lokasi / Rak<input id="addLocation" placeholder="Contoh: A1"></label>
+          <label>Tanggal expired<input id="addExpiryDate" type="date" required></label>
+          <label>Jam expired<input id="addExpiryTime" type="time" required></label>
+          <label class="wide">Catatan (opsional)<input id="addNote" placeholder="Catatan produk"></label>
+          <div class="wide"><button class="primary" type="submit">Simpan & Mulai Countdown</button></div>
+        </form></div>
+      </section>
+
+      <section id="page-register" class="page hidden">
+        <div class="content-grid">
+          <article class="panel section-card"><h2>Register Product</h2><p class="muted">Daftarkan jenis produk satu kali. Ini belum memulai countdown expired.</p>
+            <form id="registerForm" class="form-grid">
+              <label>Kategori<select id="regCategory" required></select></label>
+              <label>Nama produk<input id="regName" required placeholder="Contoh: Coconut"></label>
+              <label>Satuan default<select id="regUnit"><option>pcs</option><option>pack</option><option>gram</option><option>kg</option><option>ml</option><option>liter</option><option>botol</option></select></label>
+              <div class="wide"><button class="primary" type="submit">＋ Simpan ke Master Produk</button></div>
+            </form>
+          </article>
+          <article class="panel section-card"><div class="section-head"><div><h2>Master Produk</h2><p class="muted">Produk yang tersedia pada toko terpilih.</p></div></div><div id="masterList" class="table-wrap"></div></article>
+        </div>
+      </section>
+
+      <section id="page-history" class="page hidden">
+        <article class="panel section-card"><div class="section-head"><div><h2>History & Rekap Used/Waste</h2><p class="muted">Riwayat transaksi tidak dihapus saat bulan berganti.</p></div><button id="exportBtn" class="success">▦ Download Excel (.xlsx)</button></div>
+          <div class="filters"><label>Bulan<input id="historyMonth" type="month"></label><label>Status<select id="historyStatus"><option value="">Semua status</option><option value="used">Used</option><option value="waste">Waste</option></select></label></div>
+          <div id="historyTable" class="table-wrap"></div>
+        </article>
+      </section>
+
+      <section id="page-stores" class="page hidden"><article class="panel section-card"><div class="section-head"><div><h2>Data Toko</h2><p class="muted">Toko dalam area yang menjadi tanggung jawab Anda.</p></div><button class="primary" data-goto="accounts">＋ Daftarkan toko</button></div><div id="storesTable" class="table-wrap"></div></article></section>
+      <section id="page-accounts" class="page hidden"><div class="content-grid">
+        <article class="panel section-card"><h2>Buat akun toko</h2><p class="muted">Hanya akun berwenang yang dapat membuat user baru.</p><form id="createStoreForm" class="form-grid"><label>Kode toko<input id="newStoreCode" required placeholder="JKT001"></label><label>Nama toko<input id="newStoreName" required placeholder="Toko Cilandak"></label><label>Password awal<input id="newStorePassword" type="password" minlength="8" required></label><div class="wide"><button class="primary">Buat akun toko</button></div></form></article>
+        <article class="panel section-card super-only hidden"><h2>Buat Area Manager</h2><p class="muted">Fitur pembuatan Area Manager untuk Super Admin.</p><form id="createManagerForm" class="form-grid"><label>Kode akun<input id="newManagerCode" required placeholder="AM-JKT"></label><label>Nama Area Manager<input id="newManagerName" required></label><label>Nama area<input id="newAreaName" required placeholder="Jakarta Selatan"></label><label>Password awal<input id="newManagerPassword" type="password" minlength="8" required></label><div class="wide"><button class="primary">Buat Area Manager</button></div></form></article>
+      </div></section>
+      <footer>TOMORO COFFEE · Expiry Monitor · Pastikan zona waktu perangkat sesuai dengan lokasi toko.</footer>
+    </main>
+  </div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
