@@ -57,7 +57,7 @@
 
       <section id="page-monitor" class="page hidden">
         <div class="panel section-card"><div class="section-head"><div><h2>Produk dalam Holding Time</h2><p class="muted">Pilih produk terdaftar untuk memulai countdown.</p></div><button class="primary" data-goto="add">＋ Add Product / Mulai Countdown</button></div><div id="monitorProducts" class="product-grid"></div></div>
-        <div id="addPanel" class="panel section-card hidden"><div class="section-head"><div><h2>Add Product / Mulai Countdown</h2><button class="secondary" data-close-add>Tutup</button></div></div><form id="addForm" class="form-grid">
+        <div id="addPanel" class="panel section-card hidden"><div class="section-head"><div><h2>Add Product / Mulai Countdown</h2><button class="secondary" data-close-add>Tutup</button></div></div><form id="addForm" class="form-grid store-user-only hidden">
           <label>Kategori<select id="addCategory" required></select></label>
           <label>Produk terdaftar<select id="addMasterProduct" required></select></label>
           <label>Jumlah<input id="addQty" type="number" min="0.001" step="any" value="1" required></label>
@@ -72,8 +72,8 @@
 
       <section id="page-register" class="page hidden">
         <div class="content-grid">
-          <article class="panel section-card"><h2>Register Product</h2><p class="muted">Daftarkan jenis produk satu kali. Ini belum memulai countdown expired.</p>
-            <form id="registerForm" class="form-grid">
+          <article class="panel section-card"><h2>Register Product</h2><p class="muted">Daftarkan jenis produk satu kali. Operasi produk dilakukan dari akun User Toko.</p>
+            <form id="registerForm" class="form-grid store-user-only hidden">
               <label>Kategori<select id="regCategory" required></select></label>
               <label>Nama produk<input id="regName" required placeholder="Contoh: Coconut"></label>
               <label>Satuan default<select id="regUnit"><option>pcs</option><option>pack</option><option>gram</option><option>kg</option><option>ml</option><option>liter</option><option>botol</option></select></label>
@@ -93,7 +93,7 @@
 
       <section id="page-stores" class="page hidden"><article class="panel section-card"><div class="section-head"><div><h2>Data Toko</h2><p class="muted">Toko dalam area yang menjadi tanggung jawab Anda.</p></div><button class="primary" data-goto="accounts">＋ Daftarkan toko</button></div><div id="storesTable" class="table-wrap"></div></article></section>
       <section id="page-accounts" class="page hidden"><div class="content-grid">
-        <article class="panel section-card"><h2>Buat akun toko</h2><p class="muted">Hanya akun berwenang yang dapat membuat user baru.</p><form id="createStoreForm" class="form-grid"><label>Kode toko<input id="newStoreCode" required placeholder="JKT001"></label><label>Nama toko<input id="newStoreName" required placeholder="Toko Cilandak"></label><label>Password awal<input id="newStorePassword" type="password" minlength="8" required></label><div class="wide"><button class="primary">Buat akun toko</button></div></form></article>
+        <article class="panel section-card"><h2>Buat akun toko</h2><p class="muted">Super Admin memilih area; Area Manager hanya dapat membuat toko dalam areanya.</p><form id="createStoreForm" class="form-grid"><label>Kode toko<input id="newStoreCode" required placeholder="JKT001"></label><label>Nama toko<input id="newStoreName" required placeholder="Toko Cilandak"></label><label class="super-only hidden">Area toko<select id="newStoreArea" required><option value="">Pilih area</option></select></label><label>Password awal<input id="newStorePassword" type="password" minlength="8" required></label><div class="wide"><button class="primary" type="submit">Buat akun toko</button></div></form></article>
         <article class="panel section-card super-only hidden"><h2>Buat Area Manager</h2><p class="muted">Fitur pembuatan Area Manager untuk Super Admin.</p><form id="createManagerForm" class="form-grid"><label>Kode akun<input id="newManagerCode" required placeholder="AM-JKT"></label><label>Nama Area Manager<input id="newManagerName" required></label><label>Nama area<input id="newAreaName" required placeholder="Jakarta Selatan"></label><label>Password awal<input id="newManagerPassword" type="password" minlength="8" required></label><div class="wide"><button class="primary">Buat Area Manager</button></div></form></article>
       </div></section>
       <footer>TOMORO COFFEE · Expiry Monitor · Pastikan zona waktu perangkat sesuai dengan lokasi toko.</footer>
