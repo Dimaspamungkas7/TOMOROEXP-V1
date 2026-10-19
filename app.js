@@ -13,7 +13,16 @@
   const monthNow = () => new Date().toISOString().slice(0,7);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const toast = (msg, error=false) => { const el=$("toast"); el.textContent=msg; el.classList.toggle("error",error); el.classList.remove("hidden"); setTimeout(()=>el.classList.add("hidden"),4000); };
-  const show = (id, yes=true) => $(id).classList.toggle("hidden",!yes);
+const show = (id, yes = true) => {
+  const el = $(id);
+
+  if (!el) {
+    console.error(`[Expiry Monitor] Elemen HTML tidak ditemukan: #${id}`);
+    return;
+  }
+
+  el.classList.toggle("hidden", !yes);
+};
   const setBusy = (form,busy) => { const b=form.querySelector('button[type="submit"],button:not([type])'); if(b){b.disabled=busy;b.dataset.old ||= b.textContent;b.textContent=busy?"Memproses…":b.dataset.old;} };
   const categoryOptions = (selected="") => CATEGORIES.map(c=>`<option ${c===selected?"selected":""}>${c}</option>`).join("");
   const authEmail = (code) => `${String(code).trim().toLowerCase()}@expiry.local`;
