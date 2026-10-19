@@ -57,8 +57,10 @@
       const {data,error}=await sb.auth.signInWithPassword({email:authEmail(code),password});
       if(error) throw error;
       await enterApp(data.session);
-    }catch(err){toast("Login gagal: periksa kode akun dan password.",true);}
-  }
+} catch (err) {
+  console.error("Login error:", err);
+  toast(`Login gagal: ${err.message || "Error tidak diketahui"}`, true);
+}  }
   async function logout(){if(alarmTimer)clearInterval(alarmTimer);await sb.auth.signOut();session=null;profile=null;show("appView",false);show("loginView",true);}
   async function enterApp(s){
     session=s;
