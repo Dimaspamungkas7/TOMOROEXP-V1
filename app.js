@@ -13,16 +13,15 @@
   const monthNow = () => new Date().toISOString().slice(0,7);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const toast = (msg, error=false) => { const el=$("toast"); el.textContent=msg; el.classList.toggle("error",error); el.classList.remove("hidden"); setTimeout(()=>el.classList.add("hidden"),4000); };
-const show = (id, yes = true) => {
-  const el = $(id);
-
-  if (!el) {
-    console.error(`[Expiry Monitor] Elemen HTML tidak ditemukan: #${id}`);
-    return;
-  }
-
-  el.classList.toggle("hidden", !yes);
-};
+  const show = (id, yes=true) => {
+    const el = $(id);
+    if (!el) {
+      console.error(`[Expiry Monitor] Elemen HTML tidak ditemukan: #${id}`);
+      return false;
+    }
+    el.classList.toggle("hidden", !yes);
+    return true;
+  };
   const setBusy = (form,busy) => { const b=form.querySelector('button[type="submit"],button:not([type])'); if(b){b.disabled=busy;b.dataset.old ||= b.textContent;b.textContent=busy?"Memproses…":b.dataset.old;} };
   const categoryOptions = (selected="") => CATEGORIES.map(c=>`<option ${c===selected?"selected":""}>${c}</option>`).join("");
   const authEmail = (code) => `${String(code).trim().toLowerCase()}@expiry.local`;
@@ -66,10 +65,8 @@ const show = (id, yes = true) => {
       const {data,error}=await sb.auth.signInWithPassword({email:authEmail(code),password});
       if(error) throw error;
       await enterApp(data.session);
-} catch (err) {
-  console.error("Login error:", err);
-  toast(`Login gagal: ${err.message || "Error tidak diketahui"}`, true);
-}  }
+    }catch(err){toast("Login gagal: periksa kode akun dan password.",true);}
+  }
   async function logout(){if(alarmTimer)clearInterval(alarmTimer);await sb.auth.signOut();session=null;profile=null;show("appView",false);show("loginView",true);}
   async function enterApp(s){
     session=s;
@@ -89,9 +86,12 @@ const show = (id, yes = true) => {
       let q=sb.from("stores").select("*").eq("active",true).order("code");
       if(p.role==="area_manager")q=q.eq("area_id",p.area_id);
       const {data,error:e2}=await q;if(e2)throw e2;stores=data||[];
-      $("storeSelect").innerHTML=stores.map(st=>`<option value="${st.id}">${esc(st.code)} — ${esc(st.name)}</option>`).join("");
+      $("storeSelect").innerHTML=stores.length
+        ? stores.map(st=>`<option value="${st.id}">${esc(st.code)} — ${esc(st.name)}</option>`).join("")
+        : '<option value="">Belum ada toko aktif — buat toko di Manajemen Akun</option>';
       currentStore=stores[0]||null;
-      if(currentStore)$("storeSelect").value=currentStore.id;
+      if(currentStore) $("storeSelect").value=currentStore.id;
+      else toast("Belum ada toko aktif. Buka Manajemen Akun untuk membuat toko terlebih dahulu.", true);
     }
     $("statStores").textContent=p.role==="store_user"?"1":stores.length;
     goPage("dashboard");
@@ -130,7 +130,13 @@ const show = (id, yes = true) => {
   function renderAll(){renderStats();renderProducts();renderHistory();renderMasterList();}
   function goPage(page){
     if(page==="add"){show("addPanel",true);page="monitor";}
-    document.querySelectorAll(".page").forEach(el=>show(el.id==="page-"+page));
+    const targetId = `page-${page}`;
+    if (!$(targetId)) {
+      console.error(`[Expiry Monitor] Halaman tidak ditemukan: #${targetId}`);
+      toast(`Halaman ${page} tidak ditemukan. Pastikan index.html dan app.js berasal dari versi yang sama.`, true);
+      return;
+    }
+    document.querySelectorAll(".page").forEach(el=>el.classList.toggle("hidden", el.id !== targetId));
     document.querySelectorAll("[data-page]").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
     const titles={dashboard:["Dashboard","Ringkasan kondisi holding time."],monitor:["Holding Time","Daftar countdown produk pada toko terpilih."],register:["Register Product","Kelola master produk untuk dropdown."],history:["History & Rekap","Lacak transaksi Used/Waste dan unduh Excel."],stores:["Data Toko","Daftar toko dalam area tanggung jawab."],accounts:["Manajemen Akun","Pembuatan akun sesuai hak akses."]};
     $("pageTitle").textContent=titles[page]?.[0]||"Dashboard";$("pageSubtitle").textContent=titles[page]?.[1]||"";
@@ -209,10 +215,8 @@ const show = (id, yes = true) => {
     const p=products.find(x=>x.id===b.dataset.id);if(!p)return;
     const disposition=b.dataset.action;if(!confirm(`Catat ${p.qty} ${p.unit} ${productName(p)} sebagai ${disposition.toUpperCase()}?`))return;
     try{
-      const {error}=await sb.from("transactions").insert({store_id:p.store_id,monitored_product_id:p.id,product_name:productName(p),category:p.product_catalog?.category||"",qty:Number(p.qty),unit:p.unit,disposition,acted_by:session.user.id});
+      const {data,error}=await sb.rpc("resolve_monitored_product",{p_product_id:p.id,p_qty:Number(p.qty),p_disposition:disposition});
       if(error)throw error;
-      const {error:updateError}=await sb.from("monitored_products").update({status:disposition,resolved_at:new Date().toISOString(),resolved_by:session.user.id}).eq("id",p.id);
-      if(updateError)throw updateError;
       await loadStoreData();toast(`Transaksi ${disposition.toUpperCase()} berhasil dicatat.`);
     }catch(err){toast("Gagal menyimpan transaksi: "+err.message,true);}
   }
@@ -264,7 +268,15 @@ const show = (id, yes = true) => {
   }
   async function reloadStores(){
     let q=sb.from("stores").select("*").eq("active",true).order("code");if(profile.role==="area_manager")q=q.eq("area_id",profile.area_id);
-    const {data,error}=await q;if(error)throw error;stores=data||[];$("storeSelect").innerHTML=stores.map(st=>`<option value="${st.id}">${esc(st.code)} — ${esc(st.name)}</option>`).join("");currentStore=stores[0]||null;await loadStoreData();renderStores();
+    const {data,error}=await q;
+    if(error)throw error;
+    stores=data||[];
+    $("storeSelect").innerHTML=stores.length
+      ? stores.map(st=>`<option value="${st.id}">${esc(st.code)} — ${esc(st.name)}</option>`).join("")
+      : '<option value="">Belum ada toko aktif — buat toko di Manajemen Akun</option>';
+    currentStore=stores[0]||null;
+    if(currentStore) $("storeSelect").value=currentStore.id;
+    await loadStoreData();renderStores();
   }
   function renderStores(){
     const list=stores||[];$("storesTable").innerHTML=list.length?`<table><thead><tr><th>Kode</th><th>Nama Toko</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${list.map(st=>`<tr><td>${esc(st.code)}</td><td>${esc(st.name)}</td><td><span class="status safe">Aktif</span></td><td><button class="secondary" data-select-store="${st.id}">Pantau</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty-state">Belum ada toko.</div>`;
